@@ -27,10 +27,13 @@ input
 #include <xorg-server.h>
 #include <xorgVersion.h>
 #include <xf86.h>
+#include <stdint.h>
 
 typedef int (*rdpInputEventProcPtr)(rdpPtr dev, int msg,
                                     long param1, long param2,
                                     long param3, long param4);
+typedef int (*rdpInputTouchEventProcPtr)(rdpPtr dev, uint32_t contact_id,
+                                         uint32_t state, int32_t x, int32_t y);
 
 extern _X_EXPORT int
 rdpRegisterInputCallback(int type, rdpInputEventProcPtr proc);
@@ -44,6 +47,13 @@ extern _X_EXPORT int
 rdpInputMouseEvent(rdpPtr dev, int msg,
                    long param1, long param2,
                    long param3, long param4);
+extern _X_EXPORT int
+rdpRegisterTouchCallback(rdpInputTouchEventProcPtr proc);
+extern _X_EXPORT int
+rdpUnregisterTouchCallback(rdpInputTouchEventProcPtr proc);
+extern _X_EXPORT int
+rdpInputTouchEvent(rdpPtr dev, uint32_t contact_id, uint32_t state,
+                   int32_t x, int32_t y);
 extern _X_EXPORT int
 rdpInputInit(void);
 

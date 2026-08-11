@@ -11,4 +11,5 @@ SUBDIRS = \
   tests \
   xrdpdev \
   xrdpkeyb \
-  xrdpmouse
+  xrdpmouse \
+  xrdptouch

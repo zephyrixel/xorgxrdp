@@ -1102,6 +1102,35 @@ rdpClientConProcessMsgClientInput(rdpPtr dev, rdpClientCon *clientCon)
                 param3);
         }
     }
+    else if (msg == 303) /* native touch frame */
+    {
+        int contact_count = param1;
+        int contact_index;
+
+        if (contact_count < 1 || contact_count > 10 ||
+                s->end - s->p < contact_count * 16)
+        {
+            LOG(LOG_LEVEL_ERROR,
+                "rdpClientConProcessMsgClientInput: bad touch contact count %d",
+                contact_count);
+        }
+        else
+        {
+            for (contact_index = 0; contact_index < contact_count; ++contact_index)
+            {
+                int contact_id;
+                int state;
+                int x;
+                int y;
+
+                in_uint32_le(s, contact_id);
+                in_uint32_le(s, state);
+                in_uint32_le(s, x);
+                in_uint32_le(s, y);
+                rdpInputTouchEvent(dev, contact_id, state, x, y);
+            }
+        }
+    }
     else
     {
         LOG(LOG_LEVEL_INFO,

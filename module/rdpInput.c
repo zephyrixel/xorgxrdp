@@ -49,6 +49,7 @@ struct input_proc_list
 };
 
 static struct input_proc_list g_input_proc[MAX_INPUT_PROC];
+static rdpInputTouchEventProcPtr g_touch_proc;
 
 /******************************************************************************/
 int
@@ -90,6 +91,28 @@ rdpUnregisterInputCallback(rdpInputEventProcPtr proc)
 
 /******************************************************************************/
 int
+rdpRegisterTouchCallback(rdpInputTouchEventProcPtr proc)
+{
+    LOG(LOG_LEVEL_INFO, "rdpRegisterTouchCallback: proc %p", proc);
+    g_touch_proc = proc;
+    return 0;
+}
+
+/******************************************************************************/
+int
+rdpUnregisterTouchCallback(rdpInputTouchEventProcPtr proc)
+{
+    LOG(LOG_LEVEL_INFO, "rdpUnregisterTouchCallback: proc %p", proc);
+    if (g_touch_proc == proc)
+    {
+        g_touch_proc = 0;
+        return 0;
+    }
+    return 1;
+}
+
+/******************************************************************************/
+int
 rdpInputKeyboardEvent(rdpPtr dev, int msg,
                       long param1, long param2,
                       long param3, long param4)
@@ -119,10 +142,25 @@ rdpInputMouseEvent(rdpPtr dev, int msg,
 }
 
 /******************************************************************************/
+int
+rdpInputTouchEvent(rdpPtr dev, uint32_t contact_id, uint32_t state,
+                   int32_t x, int32_t y)
+{
+    dev->last_event_time_ms = GetTimeInMillis();
+
+    if (g_touch_proc != 0)
+    {
+        return g_touch_proc(dev, contact_id, state, x, y);
+    }
+    return 0;
+}
+
+/******************************************************************************/
 /* called when module loads */
 int
 rdpInputInit(void)
 {
     g_memset(g_input_proc, 0, sizeof(g_input_proc));
+    g_touch_proc = 0;
     return 0;
 }

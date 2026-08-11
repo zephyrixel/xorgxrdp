@@ -79,6 +79,7 @@ moduledir="$top_builddir/module/.libs,$moduledir"
 moduledir="$top_builddir/xrdpdev/.libs,$moduledir"
 moduledir="$top_builddir/xrdpkeyb/.libs,$moduledir"
 moduledir="$top_builddir/xrdpmouse/.libs,$moduledir"
+moduledir="$top_builddir/xrdptouch/.libs,$moduledir"
 
 # Run Xorg with compiled modules as a background task
 #

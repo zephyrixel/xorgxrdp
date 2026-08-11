@@ -149,7 +149,7 @@ AC_CONFIG_FILES([Makefile
                  xrdpdev/Makefile
                  xrdpkeyb/Makefile
                  xrdpmouse/Makefile
+                 xrdptouch/Makefile
 ])
 
 AC_OUTPUT
-
