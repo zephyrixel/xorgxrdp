@@ -45,6 +45,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define RDP_MAX_TILES 4096
 
+/* Keep Unicode scratch keycodes away from the normal PC keyboard range. */
+#define XRDP_UNICODE_KEYCODE_FIRST 130
+#define XRDP_UNICODE_KEYCODE_LAST 255
+#define XRDP_UNICODE_KEYCODE_COUNT \
+    ((XRDP_UNICODE_KEYCODE_LAST - XRDP_UNICODE_KEYCODE_FIRST) + 1)
+
 #define COLOR8(r, g, b) \
     ((((r) >> 5) << 0)  | (((g) >> 5) << 3) | (((b) >> 6) << 6))
 #define COLOR15(r, g, b) \
@@ -148,6 +154,11 @@ struct _rdpKeyboard
 
     int scroll_lock_down; ///< Whether key is up/down
     int scroll_lock_state; ///< Toggle state
+    int ctrl_down; ///< Tracked physical modifier keycode
+    int alt_down; ///< Tracked physical modifier keycode
+    int shift_down; ///< Tracked physical modifier keycode
+    unsigned int unicode_codepoints[XRDP_UNICODE_KEYCODE_COUNT];
+    int unicode_next_index;
     DeviceIntPtr device;
 };
 typedef struct _rdpKeyboard rdpKeyboard;
