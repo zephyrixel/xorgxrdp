@@ -2,8 +2,8 @@
  * xorgxrdp native direct-touch input driver.
  *
  * Touch contacts arrive through the xrdp/xup private input protocol and are
- * posted as XInput2 direct-touch events. Pointer emulation is intentionally
- * disabled: applications receive the original touch sequences.
+ * posted as XInput2 direct-touch events. Xorg is also allowed to emulate a
+ * pointer so applications which do not select XI2 touch events remain usable.
  */
 
 #if defined(HAVE_CONFIG_H)
@@ -41,7 +41,9 @@ rdptouchInput(rdpPtr dev, uint32_t contact_id, uint32_t state,
 {
     ValuatorMask *mask;
     uint16_t event_type;
-    uint32_t event_flags = TOUCH_CLIENT_ID;
+    /* Keep the client-visible contact ID and allow Xorg to emulate a pointer
+     * for applications which do not select XI2 touch events. */
+    uint32_t event_flags = TOUCH_CLIENT_ID | TOUCH_POINTER_EMULATED;
 
     if (g_touch_device == NULL || !((DevicePtr)g_touch_device)->on ||
             contact_id >= 256)
