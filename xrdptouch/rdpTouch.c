@@ -89,6 +89,7 @@ rdptouchControlDevice(DeviceIntPtr device, int what)
     DevicePtr p_dev;
     rdpPtr dev;
     Atom axes_labels[XRDP_TOUCH_AXES];
+    Atom button_labels[] = { None };
     CARD8 button_map[] = { 0, 1 };
 
     p_dev = (DevicePtr)device;
@@ -98,7 +99,8 @@ rdptouchControlDevice(DeviceIntPtr device, int what)
             /* Xorg's touch event state machine requires ButtonClass, but no
              * pointer-emulation flag is sent, so this never creates mouse
              * events for the remote touch contacts. */
-            if (!InitButtonClassDeviceStruct(device, 1, NULL, button_map))
+            if (!InitButtonClassDeviceStruct(device, 1, button_labels,
+                                             button_map))
             {
                 return BadAlloc;
             }
