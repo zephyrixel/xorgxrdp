@@ -33,6 +33,7 @@
 static char g_touch_type[] = XI_TOUCHSCREEN;
 static char g_touch_name[] = "XRDPTouch";
 static DeviceIntPtr g_touch_device;
+static int g_pointer_contact_id = -1;
 
 /******************************************************************************/
 static int
@@ -41,9 +42,7 @@ rdptouchInput(rdpPtr dev, uint32_t contact_id, uint32_t state,
 {
     ValuatorMask *mask;
     uint16_t event_type;
-    /* Keep the client-visible contact ID and allow Xorg to emulate a pointer
-     * for applications which do not select XI2 touch events. */
-    uint32_t event_flags = TOUCH_CLIENT_ID | TOUCH_POINTER_EMULATED;
+    uint32_t event_flags = TOUCH_CLIENT_ID;
 
     if (g_touch_device == NULL || !((DevicePtr)g_touch_device)->on ||
             contact_id >= 256)
@@ -65,6 +64,12 @@ rdptouchInput(rdpPtr dev, uint32_t contact_id, uint32_t state,
     {
         case XRDP_TOUCH_CONTACT_DOWN:
             event_type = XI_TouchBegin;
+            /* Keep one primary contact for normal desktop pointer behavior.
+             * Additional contacts remain native XI2 touch events. */
+            if (g_pointer_contact_id < 0)
+            {
+                g_pointer_contact_id = (int)contact_id;
+            }
             break;
         case XRDP_TOUCH_CONTACT_UPDATE:
             event_type = XI_TouchUpdate;
@@ -78,9 +83,20 @@ rdptouchInput(rdpPtr dev, uint32_t contact_id, uint32_t state,
             return 1;
     }
 
+    if ((int)contact_id == g_pointer_contact_id)
+    {
+        event_flags |= TOUCH_POINTER_EMULATED;
+    }
+
     xf86PostTouchEvent(g_touch_device, contact_id, event_type,
                        event_flags, mask);
     valuator_mask_free(&mask);
+
+    if (state == XRDP_TOUCH_CONTACT_UP &&
+            (int)contact_id == g_pointer_contact_id)
+    {
+        g_pointer_contact_id = -1;
+    }
     return 0;
 }
 
@@ -96,6 +112,7 @@ rdptouchControlDevice(DeviceIntPtr device, int what)
     switch (what)
     {
         case DEVICE_INIT:
+            g_pointer_contact_id = -1;
             axes_labels[0] = XIGetKnownProperty(AXIS_LABEL_PROP_ABS_X);
             axes_labels[1] = XIGetKnownProperty(AXIS_LABEL_PROP_ABS_Y);
             if (!InitValuatorClassDeviceStruct(device, XRDP_TOUCH_AXES,
@@ -171,6 +188,7 @@ rdptouchUnInit(InputDriverPtr drv, InputInfoPtr info, int flags)
     (void) info;
     (void) flags;
     rdpUnregisterTouchCallback(rdptouchInput);
+    g_pointer_contact_id = -1;
     g_touch_device = NULL;
 }
 
