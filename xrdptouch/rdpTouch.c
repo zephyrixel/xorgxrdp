@@ -2,8 +2,8 @@
  * xorgxrdp native direct-touch input driver.
  *
  * Touch contacts arrive through the xrdp/xup private input protocol and are
- * posted as XInput2 direct-touch events. Xorg is also allowed to emulate a
- * pointer so applications which do not select XI2 touch events remain usable.
+ * posted as XInput2 direct-touch events. Pointer emulation is intentionally
+ * disabled: applications must consume the native XI2 touch events.
  */
 
 #if defined(HAVE_CONFIG_H)
@@ -33,7 +33,6 @@
 static char g_touch_type[] = XI_TOUCHSCREEN;
 static char g_touch_name[] = "XRDPTouch";
 static DeviceIntPtr g_touch_device;
-static int g_pointer_contact_id = -1;
 
 /******************************************************************************/
 static int
@@ -64,12 +63,6 @@ rdptouchInput(rdpPtr dev, uint32_t contact_id, uint32_t state,
     {
         case XRDP_TOUCH_CONTACT_DOWN:
             event_type = XI_TouchBegin;
-            /* Keep one primary contact for normal desktop pointer behavior.
-             * Additional contacts remain native XI2 touch events. */
-            if (g_pointer_contact_id < 0)
-            {
-                g_pointer_contact_id = (int)contact_id;
-            }
             break;
         case XRDP_TOUCH_CONTACT_UPDATE:
             event_type = XI_TouchUpdate;
@@ -83,20 +76,9 @@ rdptouchInput(rdpPtr dev, uint32_t contact_id, uint32_t state,
             return 1;
     }
 
-    if ((int)contact_id == g_pointer_contact_id)
-    {
-        event_flags |= TOUCH_POINTER_EMULATED;
-    }
-
     xf86PostTouchEvent(g_touch_device, contact_id, event_type,
                        event_flags, mask);
     valuator_mask_free(&mask);
-
-    if (state == XRDP_TOUCH_CONTACT_UP &&
-            (int)contact_id == g_pointer_contact_id)
-    {
-        g_pointer_contact_id = -1;
-    }
     return 0;
 }
 
@@ -107,12 +89,19 @@ rdptouchControlDevice(DeviceIntPtr device, int what)
     DevicePtr p_dev;
     rdpPtr dev;
     Atom axes_labels[XRDP_TOUCH_AXES];
+    CARD8 button_map[] = { 0, 1 };
 
     p_dev = (DevicePtr)device;
     switch (what)
     {
         case DEVICE_INIT:
-            g_pointer_contact_id = -1;
+            /* Xorg's touch event state machine requires ButtonClass, but no
+             * pointer-emulation flag is sent, so this never creates mouse
+             * events for the remote touch contacts. */
+            if (!InitButtonClassDeviceStruct(device, 1, NULL, button_map))
+            {
+                return BadAlloc;
+            }
             axes_labels[0] = XIGetKnownProperty(AXIS_LABEL_PROP_ABS_X);
             axes_labels[1] = XIGetKnownProperty(AXIS_LABEL_PROP_ABS_Y);
             if (!InitValuatorClassDeviceStruct(device, XRDP_TOUCH_AXES,
@@ -188,7 +177,6 @@ rdptouchUnInit(InputDriverPtr drv, InputInfoPtr info, int flags)
     (void) info;
     (void) flags;
     rdpUnregisterTouchCallback(rdptouchInput);
-    g_pointer_contact_id = -1;
     g_touch_device = NULL;
 }
 
