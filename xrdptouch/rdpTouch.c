@@ -29,6 +29,7 @@
 
 #define XRDP_TOUCH_MAX_CONTACTS 10
 #define XRDP_TOUCH_AXES 2
+#define XRDP_TOUCH_AXIS_MAX 65535
 
 static char g_touch_type[] = XI_TOUCHSCREEN;
 static char g_touch_name[] = "XRDPTouch";
@@ -41,6 +42,8 @@ rdptouchInput(rdpPtr dev, uint32_t contact_id, uint32_t state,
 {
     ValuatorMask *mask;
     uint16_t event_type;
+    int32_t axis_x;
+    int32_t axis_y;
     /* contact_id is the DDX id; Xorg assigns the XI2 client id. */
     uint32_t event_flags = 0;
 
@@ -52,13 +55,22 @@ rdptouchInput(rdpPtr dev, uint32_t contact_id, uint32_t state,
 
     x = RDPCLAMP(x, 0, dev->width > 0 ? dev->width - 1 : 0);
     y = RDPCLAMP(y, 0, dev->height > 0 ? dev->height - 1 : 0);
+    /*
+     * The XInput device is initialized before xrdp knows the final desktop
+     * size. Use a fixed high-resolution device range and map current desktop
+     * coordinates into it so RandR resizes cannot leave dead areas.
+     */
+    axis_x = (int32_t)(((int64_t)x * XRDP_TOUCH_AXIS_MAX) /
+                       (dev->width > 1 ? dev->width - 1 : 1));
+    axis_y = (int32_t)(((int64_t)y * XRDP_TOUCH_AXIS_MAX) /
+                       (dev->height > 1 ? dev->height - 1 : 1));
     mask = valuator_mask_new(XRDP_TOUCH_AXES);
     if (mask == NULL)
     {
         return 1;
     }
-    valuator_mask_set(mask, 0, x);
-    valuator_mask_set(mask, 1, y);
+    valuator_mask_set(mask, 0, axis_x);
+    valuator_mask_set(mask, 1, axis_y);
 
     switch (state)
     {
@@ -88,7 +100,6 @@ static int
 rdptouchControlDevice(DeviceIntPtr device, int what)
 {
     DevicePtr p_dev;
-    rdpPtr dev;
     Atom axes_labels[XRDP_TOUCH_AXES];
     Atom button_labels[] = { None };
     CARD8 button_map[] = { 0, 1 };
@@ -119,11 +130,10 @@ rdptouchControlDevice(DeviceIntPtr device, int what)
                 return BadAlloc;
             }
 
-            dev = rdpGetDevFromScreen(NULL);
             xf86InitValuatorAxisStruct(device, 0, axes_labels[0], 0,
-                                       dev->width - 1, 1, 1, 1, Absolute);
+                                       XRDP_TOUCH_AXIS_MAX, 1, 1, 1, Absolute);
             xf86InitValuatorAxisStruct(device, 1, axes_labels[1], 0,
-                                       dev->height - 1, 1, 1, 1, Absolute);
+                                       XRDP_TOUCH_AXIS_MAX, 1, 1, 1, Absolute);
             g_touch_device = device;
             rdpRegisterTouchCallback(rdptouchInput);
             break;
