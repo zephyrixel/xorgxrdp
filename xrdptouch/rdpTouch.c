@@ -41,7 +41,8 @@ rdptouchInput(rdpPtr dev, uint32_t contact_id, uint32_t state,
 {
     ValuatorMask *mask;
     uint16_t event_type;
-    uint32_t event_flags = TOUCH_CLIENT_ID;
+    /* contact_id is the DDX id; Xorg assigns the XI2 client id. */
+    uint32_t event_flags = 0;
 
     if (g_touch_device == NULL || !((DevicePtr)g_touch_device)->on ||
             contact_id >= 256)
