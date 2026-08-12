@@ -28,6 +28,7 @@ RandR draw calls
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 
 /* this should be before all X11 .h files */
 #include <xorg-server.h>
@@ -53,6 +54,56 @@ RandR draw calls
 #endif
 
 static int g_panning = 0;
+
+/******************************************************************************/
+/*
+ * The xrdp RandR backend changes ScreenRec directly instead of going through
+ * the Xorg xf86 RandR helpers. Keep the DIX desktop bounds in sync with that
+ * change; input event scaling uses screenInfo, not only ScreenRec.
+ */
+static void
+rdpUpdateDesktopDimensions(void)
+{
+    int index;
+    int x1 = INT_MAX;
+    int y1 = INT_MAX;
+    int x2 = INT_MIN;
+    int y2 = INT_MIN;
+
+    for (index = 0; index < screenInfo.numScreens; index++)
+    {
+        ScreenPtr screen = screenInfo.screens[index];
+
+        if (screen == NULL)
+        {
+            continue;
+        }
+        if (screen->x < x1)
+        {
+            x1 = screen->x;
+        }
+        if (screen->y < y1)
+        {
+            y1 = screen->y;
+        }
+        if (screen->x + screen->width > x2)
+        {
+            x2 = screen->x + screen->width;
+        }
+        if (screen->y + screen->height > y2)
+        {
+            y2 = screen->y + screen->height;
+        }
+    }
+
+    if (x1 != INT_MAX && y1 != INT_MAX)
+    {
+        screenInfo.x = x1;
+        screenInfo.y = y1;
+        screenInfo.width = x2 - x1;
+        screenInfo.height = y2 - y1;
+    }
+}
 
 /******************************************************************************/
 Bool
@@ -193,6 +244,7 @@ rdpRRScreenSetSize(ScreenPtr pScreen, CARD16 width, CARD16 height,
     root->drawable.width = width;
     root->drawable.height = height;
     ResizeChildrenWinSize(root, 0, 0, 0, 0);
+    rdpUpdateDesktopDimensions();
     RRGetInfo(pScreen, 1);
     LOG(LOG_LEVEL_INFO,
         "  screen resized to %dx%d", pScreen->width, pScreen->height);
@@ -610,4 +662,3 @@ rdpRRSetRdpOutputs(rdpPtr dev)
     }
     return rv;
 }
-

@@ -36,6 +36,19 @@ static char g_touch_name[] = "XRDPTouch";
 static DeviceIntPtr g_touch_device;
 
 /******************************************************************************/
+static int32_t
+rdptouchCoordinateToAxis(int32_t coordinate, int32_t extent)
+{
+    if (extent <= 1)
+    {
+        return 0;
+    }
+    coordinate = RDPCLAMP(coordinate, 0, extent - 1);
+    return (int32_t)(((int64_t)coordinate * XRDP_TOUCH_AXIS_MAX) /
+                     (extent - 1));
+}
+
+/******************************************************************************/
 static int
 rdptouchInput(rdpPtr dev, uint32_t contact_id, uint32_t state,
               int32_t x, int32_t y)
@@ -53,17 +66,8 @@ rdptouchInput(rdpPtr dev, uint32_t contact_id, uint32_t state,
         return 0;
     }
 
-    x = RDPCLAMP(x, 0, dev->width > 0 ? dev->width - 1 : 0);
-    y = RDPCLAMP(y, 0, dev->height > 0 ? dev->height - 1 : 0);
-    /*
-     * The XInput device is initialized before xrdp knows the final desktop
-     * size. Use a fixed high-resolution device range and map current desktop
-     * coordinates into it so RandR resizes cannot leave dead areas.
-     */
-    axis_x = (int32_t)(((int64_t)x * XRDP_TOUCH_AXIS_MAX) /
-                       (dev->width > 1 ? dev->width - 1 : 1));
-    axis_y = (int32_t)(((int64_t)y * XRDP_TOUCH_AXIS_MAX) /
-                       (dev->height > 1 ? dev->height - 1 : 1));
+    axis_x = rdptouchCoordinateToAxis(x, dev->width);
+    axis_y = rdptouchCoordinateToAxis(y, dev->height);
     mask = valuator_mask_new(XRDP_TOUCH_AXES);
     if (mask == NULL)
     {
